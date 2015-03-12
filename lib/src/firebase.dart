@@ -15,6 +15,7 @@ import 'util.dart';
  * for reading or writing data to that Firebase location.
  */
 class Firebase extends Query {
+  Stream<Event> _onAuth;
   Disconnect _onDisconnect;
 
   /**
@@ -120,16 +121,7 @@ class Firebase extends Query {
   }
 
   /**
-   * Synchronously retrieves the current authentication state of the client.
-   */
-  AuthResponse getAuth() {
-    var authResponse = _fb.callMethod('getAuth');
-    return authResponse == null ? null : new AuthResponse(authResponse);
-  }
-
-  /**
-   * Authenticates a Firebase client using a third party provider (github, twitter,
-   * google, facebook). This method presents login form with a popup.
+   * Authenticates a Firebase client using a popup-based OAuth flow.
    */
   Future<AuthResponse> authWithOAuthPopup(provider, {remember: 'default', scope: ''}) {
     var c = new Completer();
@@ -144,8 +136,7 @@ class Firebase extends Query {
   }
 
   /**
-   * Authenticates a Firebase client using a third party provider (github, twitter,
-   * google, facebook). This method redirects to a login form, then back to your app.
+   * Authenticates a Firebase client using a redirect-based OAuth flow.
    */
   Future<AuthResponse> authWithOAuthRedirect(provider, {remember: 'default', scope: ''}) {
     var c = new Completer();
@@ -157,6 +148,49 @@ class Firebase extends Query {
       }
     }, jsify({'remember': remember, 'scope': scope})]);
     return c.future;
+  }  
+
+  /**
+   * Synchronously retrieves the current authentication state of the client.
+   */
+  AuthResponse getAuth() {
+    var authResponse = _fb.callMethod('getAuth');
+    return authResponse == null ? null : new AuthResponse(authResponse);
+  }
+
+  /**
+   * Listens for changes to the client's authentication state..
+   */
+  Stream<Event> onAuth([context]) {
+    if (_onAuth == null) {
+      StreamController<AuthResponse> controller;
+
+      if (context == null) {
+        context = {};
+      }
+
+      void _handleOnAuth(authData) {
+        if(authData != null) {
+          controller.add(new AuthResponse(authData));
+        }
+        else {
+          controller.add(null);
+        }
+      }
+
+      void startListen() {
+        _fb.callMethod('onAuth', [_handleOnAuth, jsify(context)]);
+      }
+      void stopListen() {
+        _fb.callMethod('offAuth', [_handleOnAuth, jsify(context)]);
+      }
+      controller = new StreamController<Event>.broadcast(
+          onListen: startListen,
+          onCancel: stopListen,
+          sync: true);
+      return controller.stream;
+    }
+    return _onAuth;
   }
 
   /**
