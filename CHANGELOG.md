@@ -1,6 +1,11 @@
-## 0.3.1
+## 0.4.0
 
 * Add authWithOAuthPopup() and authWithOAuthRedirect()
+* Add authAnonymously()
+* Add getAuth()
+* Add onAuth() listener
+* Add changePassword()
+* Add resetPassword()
 
 ## 0.3.0
 
